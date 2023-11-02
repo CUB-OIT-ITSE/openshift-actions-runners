@@ -147,6 +147,7 @@ jobs:
       - name: Push and push base image
         if: steps.commit_data.outputs.is_pr == 'false' && env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
+        id: build_base_img
         with:
           tags: |
             ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
