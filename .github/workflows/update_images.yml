@@ -153,7 +153,7 @@ jobs:
         if: steps.commit_data.outputs.is_pr == 'false' && env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.BASE_IMG_NAME}}:${{ env.IMG_TAGS }}"
+          tags: "${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME}}:${{ env.IMG_TAGS }}"
           context:
             ${{ env.BASE_IMG_DIR }}
           file:
@@ -183,7 +183,7 @@ jobs:
         id: build_buildah
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.BUILDAH_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}:${{ env.IMG_TAGS }}"
           context:
             ${{ env.BUILDAH_IMG_DIR }}
           file:
@@ -191,7 +191,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.BASE_IMG }}
 
-      - name: Build K8s tools image
+      - name: Build and push K8s tools image
         if: |
           always() &&
           env.K8S-TOOLS_CHANGED == 'true' &&
@@ -199,7 +199,7 @@ jobs:
         uses: docker/build-push-action@v5
         id: build_k8s
         with:
-          tags: "${{ env.K8S_TOOLS_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}:${{ env.IMG_TAGS }}"
           context:
             ${{ env.K8S_TOOLS_IMG_DIR }}
           file:
@@ -207,7 +207,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.BASE_IMG }}
 
-      - name: Build Node image
+      - name: Build and push Node image
         if: |
           always() &&
           env.NODE_CHANGED == 'true' &&
@@ -215,7 +215,7 @@ jobs:
         id: build_node
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.NODE_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}:${{ env.IMG_TAGS }}"
           context:
             ${{ env.NODE_IMG_DIR }}
           file:
@@ -223,7 +223,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.BASE_IMG }}
 
-      - name: Build Java image
+      - name: Build and push Java image
         if: |
           always() &&
           env.JAVA_CHANGED == 'true' &&
@@ -231,7 +231,7 @@ jobs:
         id: build_java
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.JAVA_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}:${{ env.IMG_TAGS }}"
           context:
             ${{ env.JAVA_IMG_DIR }}
           file:
