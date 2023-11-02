@@ -27,11 +27,6 @@ jobs:
   update_images:
     name: Update images
     runs-on: ubuntu-latest
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
     permissions:
       packages: write
       contents: read
@@ -144,14 +139,13 @@ jobs:
           echo "Base image is '$BASE_IMG'"
           echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
 
-      - name: Push and push base image
+      - name: Build and push base image
         if: steps.commit_data.outputs.is_pr == 'false' && env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
         id: build_base_img
         with:
           tags: |
             ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-            localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
           context:
             ${{ env.BASE_IMG_DIR }}
           file:
@@ -187,8 +181,6 @@ jobs:
             ${{ env.BUILDAH_IMG_DIR }}
           file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
-          build-args: |
-            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push K8s tools image
         if: |
@@ -204,8 +196,6 @@ jobs:
             ${{ env.K8S_TOOLS_IMG_DIR }}
           file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
-          build-args: |
-            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Node image
         if: |
@@ -221,8 +211,6 @@ jobs:
             ${{ env.NODE_IMG_DIR }}
           file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
-          build-args: |
-            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Java image
         if: |
@@ -238,5 +226,3 @@ jobs:
             ${{ env.JAVA_IMG_DIR }}
           file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
-          build-args: |
-            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
