@@ -181,6 +181,8 @@ jobs:
             ${{ env.BUILDAH_IMG_DIR }}
           file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
+          build-args: |
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push K8s tools image
         if: |
@@ -196,6 +198,8 @@ jobs:
             ${{ env.K8S_TOOLS_IMG_DIR }}
           file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
+          build-args: |
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Node image
         if: |
@@ -211,6 +215,8 @@ jobs:
             ${{ env.NODE_IMG_DIR }}
           file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
+          build-args: |
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Java image
         if: |
@@ -226,3 +232,5 @@ jobs:
             ${{ env.JAVA_IMG_DIR }}
           file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
+          build-args: |
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
