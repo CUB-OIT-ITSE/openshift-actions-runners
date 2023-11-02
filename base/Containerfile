@@ -38,7 +38,8 @@ RUN chmod g+w /etc/passwd && \
 
 COPY --chown=${USERNAME}:0 get-runner-release.sh ./
 RUN ./get-runner-release.sh
-RUN ./bin/installdependencies.sh
+RUN ./bin/installdependencies.sh && \
+    dnf clean all
 
 # Set permissions so that we can allow the openshift-generated container user to access home.
 # https://docs.openshift.com/container-platform/3.3/creating_images/guidelines.html#openshift-container-platform-specific-guidelines

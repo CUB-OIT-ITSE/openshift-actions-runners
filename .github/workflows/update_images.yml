@@ -182,6 +182,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          push: true
           context:
             ${{ env.BUILDAH_IMG_DIR }}
           file:
@@ -198,6 +199,7 @@ jobs:
         id: build_k8s
         with:
           tags: "${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          push: true
           context:
             ${{ env.K8S_TOOLS_IMG_DIR }}
           file:
@@ -214,6 +216,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          push: true
           context:
             ${{ env.NODE_IMG_DIR }}
           file:
@@ -230,6 +233,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          push: true
           context:
             ${{ env.JAVA_IMG_DIR }}
           file:
