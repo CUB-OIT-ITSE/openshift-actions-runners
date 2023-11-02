@@ -27,6 +27,11 @@ jobs:
   update_images:
     name: Update images
     runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     permissions:
       packages: write
       contents: read
@@ -44,6 +49,8 @@ jobs:
       
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
       
       - name: Login to Github Packages
         uses: docker/login-action@v3
@@ -137,23 +144,13 @@ jobs:
           echo "Base image is '$BASE_IMG'"
           echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
 
-      - name: Build base image
-        if: env.BASE_CHANGED == 'true'
-        uses: docker/build-push-action@v5
-        id: build_base_img
-        with:
-          tags: "${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}"
-          load: true
-          context:
-            ${{ env.BASE_IMG_DIR }}
-          file:
-            ${{ env.BASE_IMG_DIR }}/Containerfile
-
-      - name: Push base image
+      - name: Push and push base image
         if: steps.commit_data.outputs.is_pr == 'false' && env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME}}:${{ env.IMG_TAGS }}"
+          tags: |
+            ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
+            localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
           context:
             ${{ env.BASE_IMG_DIR }}
           file:
@@ -189,7 +186,7 @@ jobs:
           file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push K8s tools image
         if: |
@@ -205,7 +202,7 @@ jobs:
           file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Node image
         if: |
@@ -221,7 +218,7 @@ jobs:
           file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
 
       - name: Build and push Java image
         if: |
@@ -237,4 +234,4 @@ jobs:
           file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=localhost:5000/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
