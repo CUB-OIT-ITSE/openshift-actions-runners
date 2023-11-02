@@ -83,17 +83,6 @@ install() {
         # Global extract_result is the set in extract
         local executable_path=$extract_result
 
-        if [[ $executable_name == "oc" ]]; then
-            # special case for oc targz which also contains kubectl
-            local oc_path=$extract_result
-
-            extract $download_filename "kubectl"
-            local kubectl_path=$extract_result
-            move_executable $kubectl_path "kubectl"
-
-            # Reset
-            extract_result=$oc_path
-        fi
     fi
 
     move_executable $executable_path $executable_name
@@ -111,19 +100,22 @@ MIRROR="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients"
 mkdir -vp $INSTALLER_TMP
 
 assert_env_var "HELM_VERSION"
-install helm ${MIRROR}/helm/${HELM_VERSION}/helm-linux-amd64.tar.gz
+install helm https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
 
 assert_env_var "KN_VERSION"
-install kn ${MIRROR}/serverless/${KN_VERSION}/kn-linux-amd64-${KN_VERSION}.tar.gz
+curl -fLsS --output "${INSTALL_TARGET_DIR}kn" https://github.com/knative/client/releases/download/knative-v${KN_VERSION}/kn-linux-amd64
+chmod +x "${INSTALL_TARGET_DIR}kn"
 
 assert_env_var "OC_VERSION"
 install oc ${MIRROR}/ocp/${OC_VERSION}/openshift-client-linux.tar.gz
+ln -s ${INSTALL_TARGET_DIR}oc ${INSTALL_TARGET_DIR}kubectl
 
 assert_env_var "TKN_VERSION"
-install tkn ${MIRROR}/pipeline/${TKN_VERSION}/tkn-linux-amd64-${TKN_VERSION}.tar.gz
+install tkn https://github.com/tektoncd/cli/releases/download/v${TKN_VERSION}/tkn_${TKN_VERSION}_Linux_x86_64.tar.gz
 
 assert_env_var "YQ_VERSION"
-install yq https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64.tar.gz
+install yq_linux_amd64 https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64.tar.gz
+ln -s ${INSTALL_TARGET_DIR}yq_linux_amd64 ${INSTALL_TARGET_DIR}yq
 
 echo "Removing $INSTALLER_TMP"
 rm -rf $INSTALLER_TMP
