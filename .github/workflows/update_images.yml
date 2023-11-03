@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - update_images
+ #   tags:
+ #     - v*
   workflow_dispatch:
 
 env:
@@ -34,9 +36,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: redhat-actions/common/commit-data@v1
-        id: commit_data
 
       - uses: lots0logs/gh-action-get-changed-files@2.2.2
         id: get_changed_files
@@ -105,28 +104,16 @@ jobs:
             // const anyChanged = Object.entries(dirsChanged).find(([k, v] => dirsChanged[k]));
             return dirsChanged;
 
-      - name: Determine image tag
-        shell: bash
-        run: |
-          export IMG_TAGS=latest
-          export GIT_TAG="${{ steps.commit_data.outputs.tag }}"
-          export BRANCH="${{ steps.commit_data.outputs.branch }}"
-
-          if [[ -n "$GIT_TAG" ]]; then
-            IMG_TAGS="$GIT_TAG"
-          elif [[ -n "$BRANCH" ]]; then
-            if [[ "$BRANCH" == "main" ]]; then
-              IMG_TAGS="latest"
-            else
-              IMG_TAGS=$BRANCH
-            fi
-          else
-            IMG_TAGS="${{ steps.commit_data.outputs.short_sha }}"
-          fi
-
-          echo "IMG_TAGS=$IMG_TAGS" >> $GITHUB_ENV
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "Tagging images with '$IMG_TAGS'"
+        
+      - name: Collect Tagging data for docker base image
+        id: meta_base
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
       # The child image builds are done on the same machine so that
       # it doesn't have to pull the updated base image; it's already there locally.
@@ -134,11 +121,14 @@ jobs:
         shell: bash
         run: |
           export FIRST_TAG=$(echo "${{ env.IMG_TAGS }}" | awk '{ print $1 }')
+          echo "TAGS: ${{ steps.meta_base.outputs.tags }}"
 
           # export BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:$FIRST_TAG
           export BASE_IMG=${{ env.BASE_IMG_NAME }}:$FIRST_TAG
           echo "Base image is '$BASE_IMG'"
           echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
+          exit 1
+      
 
       - name: Cache Docker Layers for base
         if: env.BASE_CHANGED == 'true'
