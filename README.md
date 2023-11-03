@@ -1,10 +1,8 @@
 # OpenShift GitHub Actions Runners
 
-[![Update Runner Images](https://github.com/CUB-OIT-ITSE/openshift-actions-runner/actions/workflows/update_images.yml/badge.svg)](https://github.com/CUB-OIT-ITSE/openshift-actions-runner/actions/workflows/update_images.yml)
-[![Link checker](https://github.com/CUB-OIT-ITSE/openshift-actions-runner/actions/workflows/link_check.yml/badge.svg)](https://github.com/CUB-OIT-ITSE/openshift-actions-runner/actions/workflows/link_check.yml)
-
-[![Tag](https://img.shields.io/github/v/tag/cub-oit-itse/openshift-actions-runner)](https://github.com/cub-oit-itse/openshift-actions-runner/tags)
-[![Quay org](https://img.shields.io/badge/quay-redhat--github--actions-red)](https://quay.io/organization/redhat-github-actions)
+[![Update Runner Images](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/actions/workflows/update_images.yml/badge.svg?event=push)](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/actions/workflows/update_images.yml)
+[![Link checker](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/actions/workflows/link_check.yml/badge.svg)](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/actions/workflows/link_check.yml)
+[![Tag](https://img.shields.io/github/v/tag/CUB-OIT-ITSE/openshift-actions-runners)](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/tags)
 
 This repository contains Containerfiles for building container images that act as [self-hosted GitHub Action runners](https://docs.github.com/en/free-pro-team@latest/actions/hosting-your-own-runners/about-self-hosted-runners) that work on OpenShift.
 
