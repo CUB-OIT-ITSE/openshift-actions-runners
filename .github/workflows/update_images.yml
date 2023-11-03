@@ -2,7 +2,7 @@ name: Update Runner Images
 on:
   push:
     branches:
-      - update_images
+      - main
     tags:
       - v*
   workflow_dispatch:
@@ -115,44 +115,18 @@ jobs:
             type=semver,pattern=v{{major}}
             type=ref,event=branch
 
-      # The child image builds are done on the same machine so that
-      # it doesn't have to pull the updated base image; it's already there locally.
-      - name: Determine parent image name and tag
-        shell: bash
-        run: |
-          export FIRST_TAG=$(echo "${{ env.IMG_TAGS }}" | awk '{ print $1 }')
-          echo "TAGS: ${{ steps.meta_base.outputs.tags }}"
-
-          # export BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:$FIRST_TAG
-          export BASE_IMG=${{ env.BASE_IMG_NAME }}:$FIRST_TAG
-          echo "Base image is '$BASE_IMG'"
-          echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
-          exit 1
-      
-
-      - name: Cache Docker Layers for base
-        if: env.BASE_CHANGED == 'true'
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
-          key: ${{ runner.os }}-buildx-${{ env.BASE_IMG_DIR }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ env.BASE_IMG_DIR }}-
-
       - name: Build and push base image
         if: env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
         id: build_base_img
         with:
           tags: |
-            ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
+            ${{ steps.meta_base.outputs.tags }}
           context:
             ${{ env.BASE_IMG_DIR }}
           file:
             ${{ env.BASE_IMG_DIR }}/Containerfile
           push: true
-          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BASE_IMG_DIR }},mode=max
 
       - name: Prune all untagged versions except for the last 3 for base
         if: env.BASE_CHANGED == 'true'
@@ -178,17 +152,19 @@ jobs:
           fi
           echo "BUILD_CHILDREN=$BUILD_CHILDREN" >> $GITHUB_ENV
 
-      - name: Cache Docker Layers for buildah
+      - name: Collect Tagging data for docker buildah image
         if: |
           always() &&
           env.BUILDAH_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/cache@v3
+        id: meta_buildah
+        uses: docker/metadata-action@v5
         with:
-          path: /tmp/.buildx-cache/${{ env.BUILDAH_IMG_DIR }}
-          key: ${{ runner.os }}-buildx-${{ env.BUILDAH_IMG_DIR }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ env.BUILDAH_IMG_DIR }}-
+          images: ${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
       - name: Build and push buildah image
         if: |
@@ -198,16 +174,14 @@ jobs:
         id: build_buildah
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ steps.meta_buildah.outputs.tags }}"
           push: true
           context:
             ${{ env.BUILDAH_IMG_DIR }}
           file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BUILDAH_IMG_DIR }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BUILDAH_IMG_DIR }},mode=max
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
       - name: Prune all untagged versions except for the last 3 for buildah
         if: |
@@ -221,17 +195,19 @@ jobs:
           min-versions-to-keep: 3
           delete-only-untagged-versions: 'true'
 
-      - name: Cache Docker Layers for k8s img
+      - name: Collect Tagging data for docker k8s image
         if: |
           always() &&
           env.K8S-TOOLS_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/cache@v3
+        id: meta_k8s
+        uses: docker/metadata-action@v5
         with:
-          path: /tmp/.buildx-cache/${{ env.K8S_TOOLS_IMG_DIR }}
-          key: ${{ runner.os }}-buildx-${{ env.K8S_TOOLS_IMG_DIR }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ env.K8S_TOOLS_IMG_DIR }}-
+          images: ${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
       - name: Build and push K8s tools image
         if: |
@@ -241,16 +217,14 @@ jobs:
         uses: docker/build-push-action@v5
         id: build_k8s
         with:
-          tags: "${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ steps.meta_k8s.outputs.tags }}"
           push: true
           context:
             ${{ env.K8S_TOOLS_IMG_DIR }}
           file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.K8S_TOOLS_IMG_DIR }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.K8S_TOOLS_IMG_DIR }},mode=max
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
       - name: Prune all untagged versions except for the last 3 for k8s-tools
         if: |
@@ -264,17 +238,19 @@ jobs:
           min-versions-to-keep: 3
           delete-only-untagged-versions: 'true'
 
-      - name: Cache Docker Layers for node img
+      - name: Collect Tagging data for docker node image
         if: |
           always() &&
           env.NODE_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/cache@v3
+        id: meta_node
+        uses: docker/metadata-action@v5
         with:
-          path: /tmp/.buildx-cache/${{ env.NODE_IMG_DIR }}
-          key: ${{ runner.os }}-buildx-${{ env.NODE_IMG_DIR }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ env.NODE_IMG_DIR }}-
+          images: ${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
       - name: Build and push Node image
         if: |
@@ -284,16 +260,14 @@ jobs:
         id: build_node
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ steps.meta_node.outputs.tags }}"
           push: true
           context:
             ${{ env.NODE_IMG_DIR }}
           file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.NODE_IMG_DIR }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.NODE_IMG_DIR }},mode=max
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
       - name: Prune all untagged versions except for the last 3 for node image
         if: |
@@ -307,17 +281,19 @@ jobs:
           min-versions-to-keep: 3
           delete-only-untagged-versions: 'true'
 
-      - name: Cache Docker Layers for java img
+      - name: Collect Tagging data for docker java image
         if: |
           always() &&
           env.JAVA_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/cache@v3
+        id: meta_java
+        uses: docker/metadata-action@v5
         with:
-          path: /tmp/.buildx-cache/${{ env.JAVA_IMG_DIR }}
-          key: ${{ runner.os }}-buildx-${{ env.JAVA_IMG_DIR }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ env.JAVA_IMG_DIR }}-
+          images: ${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
       - name: Build and push Java image
         if: |
@@ -327,18 +303,16 @@ jobs:
         id: build_java
         uses: docker/build-push-action@v5
         with:
-          tags: "${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}:${{ env.IMG_TAGS }}"
+          tags: "${{ steps.meta_java.outputs.tags }}"
           push: true
           context:
             ${{ env.JAVA_IMG_DIR }}
           file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.JAVA_IMG_DIR }}
-          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.JAVA_IMG_DIR }},mode=max
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
-      - name: Prune all untagged versions except for the last 3 for node image
+      - name: Prune all untagged versions except for the last 3 for java image
         if: |
           always() &&
           env.JAVA_CHANGED == 'true' &&
@@ -349,11 +323,3 @@ jobs:
           package-type: 'container'
           min-versions-to-keep: 3
           delete-only-untagged-versions: 'true'
-      
-      - name: Move the cache for bug
-        if: (env.BASE_CHANGED == 'true' || env.BUILD_CHILDREN == 'true')
-        run: |
-          if [[ -d "/tmp/.buildx-cache-new" ]]; then
-            rm -rf /tmp/.buildx-cache
-            mv -v /tmp/.buildx-cache-new /tmp/.buildx-cache
-          fi
