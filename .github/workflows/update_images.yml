@@ -3,8 +3,8 @@ on:
   push:
     branches:
       - update_images
- #   tags:
- #     - v*
+    tags:
+      - v*
   workflow_dispatch:
 
 env:
