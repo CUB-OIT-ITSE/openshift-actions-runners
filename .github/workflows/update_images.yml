@@ -1,12 +1,15 @@
 name: Update Runner Images
 on:
   push:
-  pull_request:
+    branches:
+      - main
+    tags:
+      - v*
   workflow_dispatch:
 
-
 env:
-  REGISTRY_URL: quay.io/redhat-github-actions
+  LOGIN_REGISTRY_URL: ghcr.io
+  REGISTRY_URL: ghcr.io/cub-oit-itse
 
   BASE_IMG_NAME: runner
   BASE_IMG_DIR: base
@@ -17,7 +20,7 @@ env:
   K8S_TOOLS_IMG_NAME: k8s-tools-runner
   K8S_TOOLS_IMG_DIR: k8s-tools
 
-  NODE_IMG_NAME: node-runner-14
+  NODE_IMG_NAME: node-runner-20
   NODE_IMG_DIR: node
 
   JAVA_IMG_NAME: java-runner-11
@@ -26,22 +29,34 @@ env:
 jobs:
   update_images:
     name: Update images
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - uses: redhat-actions/common/commit-data@v1
-        id: commit_data
-
-      - uses: lots0logs/gh-action-get-changed-files@2.1.4
+      - uses: lots0logs/gh-action-get-changed-files@2.2.2
         id: get_changed_files
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      
+      - name: Login to Github Packages
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.LOGIN_REGISTRY_URL }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine changed directories
         id: is_dir_changed
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         with:
           script: |
             const changedFiles = ${{ steps.get_changed_files.outputs.all }};
@@ -89,63 +104,38 @@ jobs:
             // const anyChanged = Object.entries(dirsChanged).find(([k, v] => dirsChanged[k]));
             return dirsChanged;
 
-      - name: Determine image tag
-        shell: bash
-        run: |
-          export IMG_TAGS=latest
-          export GIT_TAG="${{ steps.commit_data.outputs.tag }}"
-          export BRANCH="${{ steps.commit_data.outputs.branch }}"
+        
+      - name: Collect Tagging data for docker base image
+        id: meta_base
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
 
-          if [[ -n "$GIT_TAG" ]]; then
-            IMG_TAGS="$GIT_TAG"
-          elif [[ -n "$BRANCH" ]]; then
-            if [[ "$BRANCH" == "main" ]]; then
-              IMG_TAGS="latest"
-            else
-              IMG_TAGS=$BRANCH
-            fi
-          else
-            IMG_TAGS="${{ steps.commit_data.outputs.short_sha }}"
-          fi
-
-          echo "IMG_TAGS=$IMG_TAGS" >> $GITHUB_ENV
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "Tagging images with '$IMG_TAGS'"
-
-      # The child image builds are done on the same machine so that
-      # it doesn't have to pull the updated base image; it's already there locally.
-      - name: Determine parent image name and tag
-        shell: bash
-        run: |
-          export FIRST_TAG=$(echo "${{ env.IMG_TAGS }}" | awk '{ print $1 }')
-
-          # export BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:$FIRST_TAG
-          export BASE_IMG=${{ env.BASE_IMG_NAME }}:$FIRST_TAG
-          echo "Base image is '$BASE_IMG'"
-          echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
-
-      - name: Build base image
+      - name: Build and push base image
         if: env.BASE_CHANGED == 'true'
-        uses: redhat-actions/buildah-build@v2
+        uses: docker/build-push-action@v5
         id: build_base_img
         with:
-          image: ${{ env.BASE_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          oci: true
+          tags: |
+            ${{ steps.meta_base.outputs.tags }}
           context:
             ${{ env.BASE_IMG_DIR }}
-          dockerfiles:
+          file:
             ${{ env.BASE_IMG_DIR }}/Containerfile
+          push: true
 
-      - name: Push base image
-        if: steps.commit_data.outputs.is_pr == 'false' && env.BASE_CHANGED == 'true'
-        uses: redhat-actions/push-to-registry@v2
+      - name: Prune all untagged versions except for the last 3 for base
+        if: env.BASE_CHANGED == 'true'
+        uses: actions/delete-package-versions@v4
         with:
-          image: ${{ env.BASE_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          package-name: ${{ env.BASE_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
 
       - name: Determine if child images should be built
         run: |
@@ -162,122 +152,174 @@ jobs:
           fi
           echo "BUILD_CHILDREN=$BUILD_CHILDREN" >> $GITHUB_ENV
 
-      - name: Build buildah image
+      - name: Collect Tagging data for docker buildah image
+        if: |
+          always() &&
+          env.BUILDAH_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        id: meta_buildah
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
+
+      - name: Build and push buildah image
         if: |
           always() &&
           env.BUILDAH_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
         id: build_buildah
-        uses: redhat-actions/buildah-build@v2
+        uses: docker/build-push-action@v5
         with:
-          image: ${{ env.BUILDAH_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          oci: true
+          tags: "${{ steps.meta_buildah.outputs.tags }}"
+          push: true
           context:
             ${{ env.BUILDAH_IMG_DIR }}
-          dockerfiles:
+          file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
-      - name: Push buildah image
+      - name: Prune all untagged versions except for the last 3 for buildah
         if: |
-          steps.build_buildah.outcome == 'success' &&
-          steps.commit_data.outputs.is_pr == 'false'
-        uses: redhat-actions/push-to-registry@v2
+          always() &&
+          env.BUILDAH_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
         with:
-          image: ${{ env.BUILDAH_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          package-name: ${{ env.BUILDAH_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
 
-      - name: Build K8s tools image
+      - name: Collect Tagging data for docker k8s image
         if: |
           always() &&
           env.K8S-TOOLS_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: redhat-actions/buildah-build@v2
+        id: meta_k8s
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
+
+      - name: Build and push K8s tools image
+        if: |
+          always() &&
+          env.K8S-TOOLS_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: docker/build-push-action@v5
         id: build_k8s
         with:
-          image: ${{ env.K8S_TOOLS_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          oci: true
+          tags: "${{ steps.meta_k8s.outputs.tags }}"
+          push: true
           context:
             ${{ env.K8S_TOOLS_IMG_DIR }}
-          dockerfiles:
+          file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
-      - name: Push K8s tools image
+      - name: Prune all untagged versions except for the last 3 for k8s-tools
         if: |
-          steps.build_k8s.outcome == 'success' &&
-          steps.commit_data.outputs.is_pr == 'false'
-        uses: redhat-actions/push-to-registry@v2
+          always() &&
+          env.K8S-TOOLS_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
         with:
-          image: ${{ env.K8S_TOOLS_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          package-name: ${{ env.K8S_TOOLS_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
 
-      - name: Build Node image
+      - name: Collect Tagging data for docker node image
+        if: |
+          always() &&
+          env.NODE_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        id: meta_node
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
+
+      - name: Build and push Node image
         if: |
           always() &&
           env.NODE_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
         id: build_node
-        uses: redhat-actions/buildah-build@v2
+        uses: docker/build-push-action@v5
         with:
-          image: ${{ env.NODE_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          oci: true
+          tags: "${{ steps.meta_node.outputs.tags }}"
+          push: true
           context:
             ${{ env.NODE_IMG_DIR }}
-          dockerfiles:
+          file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
-      - name: Push Node image
+      - name: Prune all untagged versions except for the last 3 for node image
         if: |
-          steps.build_node.outcome == 'success' &&
-          steps.commit_data.outputs.is_pr == 'false'
-        uses: redhat-actions/push-to-registry@v2
+          always() &&
+          env.NODE_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
         with:
-          image: ${{ env.NODE_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          package-name: ${{ env.NODE_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
 
-      - name: Build Java image
+      - name: Collect Tagging data for docker java image
+        if: |
+          always() &&
+          env.JAVA_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        id: meta_java
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}
+            type=ref,event=branch
+
+      - name: Build and push Java image
         if: |
           always() &&
           env.JAVA_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
         id: build_java
-        uses: redhat-actions/buildah-build@v2
+        uses: docker/build-push-action@v5
         with:
-          image: ${{ env.JAVA_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          oci: true
+          tags: "${{ steps.meta_java.outputs.tags }}"
+          push: true
           context:
             ${{ env.JAVA_IMG_DIR }}
-          dockerfiles:
+          file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.BASE_IMG }}
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
 
-      - name: Push Java image
+      - name: Prune all untagged versions except for the last 3 for java image
         if: |
-          steps.build_java.outcome == 'success' &&
-          steps.commit_data.outputs.is_pr == 'false'
-        uses: redhat-actions/push-to-registry@v2
+          always() &&
+          env.JAVA_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
         with:
-          image: ${{ env.JAVA_IMG_NAME }}
-          tags: ${{ env.IMG_TAGS }}
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          package-name: ${{ env.JAVA_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'

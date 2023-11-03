@@ -1,8 +1,9 @@
-ARG BASE_IMG=quay.io/redhat-github-actions/runner:latest
+ARG BASE_IMG=ghcr.io/cub-oit-itse/runner:latest
 FROM $BASE_IMG AS java-runner
 
 USER root
 
-RUN dnf install -y java-11-openjdk-devel.x86_64
+RUN dnf install -y java-11-openjdk-devel.x86_64 && \
+    dnf clean all
 
 USER $UID
