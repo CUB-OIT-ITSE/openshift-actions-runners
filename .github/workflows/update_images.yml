@@ -6,21 +6,22 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY_URL: ghcr.io
+  LOGIN_REGISTRY_URL: ghcr.io
+  REGISTRY_URL: ghcr.io/cub-oit-itse
 
-  BASE_IMG_NAME: cub-oit-itse/runner
+  BASE_IMG_NAME: runner
   BASE_IMG_DIR: base
 
-  BUILDAH_IMG_NAME: cub-oit-itse/buildah-runner
+  BUILDAH_IMG_NAME: buildah-runner
   BUILDAH_IMG_DIR: buildah
 
-  K8S_TOOLS_IMG_NAME: cub-oit-itse/k8s-tools-runner
+  K8S_TOOLS_IMG_NAME: k8s-tools-runner
   K8S_TOOLS_IMG_DIR: k8s-tools
 
-  NODE_IMG_NAME: cub-oit-itse/node-runner-20
+  NODE_IMG_NAME: node-runner-20
   NODE_IMG_DIR: node
 
-  JAVA_IMG_NAME: cub-oit-itse/java-runner-11
+  JAVA_IMG_NAME: java-runner-11
   JAVA_IMG_DIR: java
 
 jobs:
@@ -50,7 +51,7 @@ jobs:
       - name: Login to Github Packages
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY_URL }}
+          registry: ${{ env.LOGIN_REGISTRY_URL }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -163,6 +164,15 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
           cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BASE_IMG_DIR }},mode=max
 
+      - name: Prune all untagged versions except for the last 3 for base
+        if: env.BASE_CHANGED == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.BASE_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
+
       - name: Determine if child images should be built
         run: |
           export BUILD_BASE_OUTCOME="${{ steps.build_base_img.outcome }}"
@@ -209,6 +219,18 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BUILDAH_IMG_DIR }}
           cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BUILDAH_IMG_DIR }},mode=max
 
+      - name: Prune all untagged versions except for the last 3 for buildah
+        if: |
+          always() &&
+          env.BUILDAH_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.BUILDAH_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
+
       - name: Cache Docker Layers for k8s img
         if: |
           always() &&
@@ -239,6 +261,18 @@ jobs:
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
           cache-from: type=local,src=/tmp/.buildx-cache/${{ env.K8S_TOOLS_IMG_DIR }}
           cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.K8S_TOOLS_IMG_DIR }},mode=max
+
+      - name: Prune all untagged versions except for the last 3 for k8s-tools
+        if: |
+          always() &&
+          env.K8S-TOOLS_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.K8S_TOOLS_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
 
       - name: Cache Docker Layers for node img
         if: |
@@ -271,6 +305,18 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache/${{ env.NODE_IMG_DIR }}
           cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.NODE_IMG_DIR }},mode=max
 
+      - name: Prune all untagged versions except for the last 3 for node image
+        if: |
+          always() &&
+          env.NODE_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.NODE_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
+
       - name: Cache Docker Layers for java img
         if: |
           always() &&
@@ -301,11 +347,23 @@ jobs:
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
           cache-from: type=local,src=/tmp/.buildx-cache/${{ env.JAVA_IMG_DIR }}
           cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.JAVA_IMG_DIR }},mode=max
+
+      - name: Prune all untagged versions except for the last 3 for node image
+        if: |
+          always() &&
+          env.JAVA_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.JAVA_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: 'true'
       
       - name: Move the cache for bug
         if: (env.BASE_CHANGED == 'true' || env.BUILD_CHILDREN == 'true')
         run: |
           if [[ -d "/tmp/.buildx-cache-new" ]]; then
             rm -rf /tmp/.buildx-cache
-            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+            mv -v /tmp/.buildx-cache-new /tmp/.buildx-cache
           fi
