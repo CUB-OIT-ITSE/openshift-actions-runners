@@ -130,13 +130,13 @@ jobs:
             ${{ env.BASE_IMG_DIR }}/Containerfile
           push: true
 
-      - name: Prune all untagged versions except for the last 3 for base
+      - name: Prune all untagged versions except for the last 6 for base
         if: env.BASE_CHANGED == 'true'
         uses: actions/delete-package-versions@v4
         with:
           package-name: ${{ env.BASE_IMG_NAME }}
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
 
       - name: Determine if child images should be built
@@ -185,7 +185,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
-      - name: Prune all untagged versions except for the last 3 for buildah
+      - name: Prune all untagged versions except for the last 6 for buildah
         if: |
           always() &&
           env.BUILDAH_CHANGED == 'true' &&
@@ -194,7 +194,7 @@ jobs:
         with:
           package-name: ${{ env.BUILDAH_IMG_NAME }}
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
 
       - name: Collect Tagging data for docker k8s image
@@ -228,7 +228,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
-      - name: Prune all untagged versions except for the last 3 for k8s-tools
+      - name: Prune all untagged versions except for the last 6 for k8s-tools
         if: |
           always() &&
           env.K8S-TOOLS_CHANGED == 'true' &&
@@ -237,7 +237,7 @@ jobs:
         with:
           package-name: ${{ env.K8S_TOOLS_IMG_NAME }}
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
 
       - name: Collect Tagging data for docker node image
@@ -271,7 +271,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
-      - name: Prune all untagged versions except for the last 3 for node image
+      - name: Prune all untagged versions except for the last 6 for node image
         if: |
           always() &&
           env.NODE_CHANGED == 'true' &&
@@ -280,7 +280,7 @@ jobs:
         with:
           package-name: ${{ env.NODE_IMG_NAME }}
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
 
       - name: Collect Tagging data for docker java image
@@ -314,7 +314,7 @@ jobs:
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
-      - name: Prune all untagged versions except for the last 3 for java image
+      - name: Prune all untagged versions except for the last 6 for java image
         if: |
           always() &&
           env.JAVA_CHANGED == 'true' &&
@@ -323,5 +323,5 @@ jobs:
         with:
           package-name: ${{ env.JAVA_IMG_NAME }}
           package-type: 'container'
-          min-versions-to-keep: 3
+          min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
