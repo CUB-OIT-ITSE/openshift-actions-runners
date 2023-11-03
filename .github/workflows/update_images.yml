@@ -33,6 +33,8 @@ jobs:
     permissions:
       packages: write
       contents: read
+    env:
+      BASE_IMG_TAG: ${{ github.ref_name == 'main' && 'main' || 'latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +116,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern=v{{major}}
             type=ref,event=branch
-
+      
       - name: Build and push base image
         if: env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
@@ -181,7 +183,7 @@ jobs:
           file:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
       - name: Prune all untagged versions except for the last 3 for buildah
         if: |
@@ -224,7 +226,7 @@ jobs:
           file:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
       - name: Prune all untagged versions except for the last 3 for k8s-tools
         if: |
@@ -267,7 +269,7 @@ jobs:
           file:
             ${{ env.NODE_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
       - name: Prune all untagged versions except for the last 3 for node image
         if: |
@@ -310,7 +312,7 @@ jobs:
           file:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
           build-args: |
-            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:main
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
 
       - name: Prune all untagged versions except for the last 3 for java image
         if: |
