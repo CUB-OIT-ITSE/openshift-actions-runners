@@ -147,6 +147,14 @@ jobs:
           echo "Base image is '$BASE_IMG'"
           echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
 
+      - name: Cache Docker Layers for base
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
+          key: ${{ runner.os }}-buildx-${{ env.BASE_IMG_DIR }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ env.BASE_IMG_DIR }}-
+
       - name: Build and push base image
         if: env.BASE_CHANGED == 'true'
         uses: docker/build-push-action@v5
@@ -159,8 +167,8 @@ jobs:
           file:
             ${{ env.BASE_IMG_DIR }}/Containerfile
           push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BASE_IMG_DIR }},mode=max
 
       - name: Determine if child images should be built
         run: |
@@ -176,6 +184,18 @@ jobs:
             echo "Child image builds will be skipped."
           fi
           echo "BUILD_CHILDREN=$BUILD_CHILDREN" >> $GITHUB_ENV
+
+      - name: Cache Docker Layers for buildah
+        if: |
+          always() &&
+          env.BUILDAH_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache/${{ env.BUILDAH_IMG_DIR }}
+          key: ${{ runner.os }}-buildx-${{ env.BUILDAH_IMG_DIR }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ env.BUILDAH_IMG_DIR }}-
 
       - name: Build and push buildah image
         if: |
@@ -193,8 +213,20 @@ jobs:
             ${{ env.BUILDAH_IMG_DIR }}/Containerfile
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.BUILDAH_IMG_DIR }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.BUILDAH_IMG_DIR }},mode=max
+
+      - name: Cache Docker Layers for k8s img
+        if: |
+          always() &&
+          env.K8S-TOOLS_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache/${{ env.K8S_TOOLS_IMG_DIR }}
+          key: ${{ runner.os }}-buildx-${{ env.K8S_TOOLS_IMG_DIR }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ env.K8S_TOOLS_IMG_DIR }}-
 
       - name: Build and push K8s tools image
         if: |
@@ -212,8 +244,20 @@ jobs:
             ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.K8S_TOOLS_IMG_DIR }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.K8S_TOOLS_IMG_DIR }},mode=max
+
+      - name: Cache Docker Layers for node img
+        if: |
+          always() &&
+          env.NODE_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache/${{ env.NODE_IMG_DIR }}
+          key: ${{ runner.os }}-buildx-${{ env.NODE_IMG_DIR }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ env.NODE_IMG_DIR }}-
 
       - name: Build and push Node image
         if: |
@@ -231,8 +275,20 @@ jobs:
             ${{ env.NODE_IMG_DIR }}/Containerfile
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.NODE_IMG_DIR }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.NODE_IMG_DIR }},mode=max
+
+      - name: Cache Docker Layers for java img
+        if: |
+          always() &&
+          env.JAVA_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache/${{ env.JAVA_IMG_DIR }}
+          key: ${{ runner.os }}-buildx-${{ env.JAVA_IMG_DIR }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ env.JAVA_IMG_DIR }}-
 
       - name: Build and push Java image
         if: |
@@ -250,8 +306,8 @@ jobs:
             ${{ env.JAVA_IMG_DIR }}/Containerfile
           build-args: |
             BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.IMG_TAGS }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache/${{ env.JAVA_IMG_DIR }}
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/${{ env.JAVA_IMG_DIR }},mode=max
       
       - name: Move the cache for bug
         if: (env.BASE_CHANGED == 'true' || env.BUILD_CHILDREN == 'true')
