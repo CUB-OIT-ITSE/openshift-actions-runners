@@ -148,6 +148,7 @@ jobs:
           echo BASE_IMG=$BASE_IMG >> $GITHUB_ENV
 
       - name: Cache Docker Layers for base
+        if: env.BASE_CHANGED == 'true'
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache/${{ env.BASE_IMG_DIR }}
