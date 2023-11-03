@@ -92,7 +92,7 @@ If the containers crash on startup, it is usually because one of the environment
 - If the container crashes with an HTTP 404 error, the `GITHUB_OWNER` or `GITHUB_REPOSITORY` is incorrect or misspelled.
     - This will also happen if a private repository is selected which the `GITHUB_PAT` does not have permission to view.
 
-If you encounter any other issues, please [open an issue](https://github.com/CUB-OIT-ITSE/openshift-actions-runner/issues) and we will help you work through it.
+If you encounter any other issues, please [open an issue](https://github.com/CUB-OIT-ITSE/openshift-actions-runners/issues) and we will help you work through it.
 
 ## Credits
 This repository is forked from [redhat-actions/openshift-actions-runner](https://github.com/redhat-actions/openshift-actions-runner) and switched to publish to GitHub Packages.
