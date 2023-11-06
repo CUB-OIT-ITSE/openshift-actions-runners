@@ -37,15 +37,16 @@ RUN chmod g+w /etc/passwd && \
     chmod -v ug+rw /etc/sub{g,u}id
 
 COPY --chown=${USERNAME}:0 get-runner-release.sh ./
-RUN ./get-runner-release.sh
-RUN ./bin/installdependencies.sh && \
-    dnf clean all
 
+# Install the runner and set permissions in one step, otherwise the chown/chmod commands double disk comsumption
 # Set permissions so that we can allow the openshift-generated container user to access home.
 # https://docs.openshift.com/container-platform/3.3/creating_images/guidelines.html#openshift-container-platform-specific-guidelines
-RUN chown -R ${USERNAME}:0 /home/${USERNAME}/ && \
+RUN ./get-runner-release.sh && \
+    chown -R ${USERNAME}:0 /home/${USERNAME}/ && \
     chgrp -R 0 /home/${USERNAME}/ && \
     chmod -R g=u /home/${USERNAME}/
+RUN ./bin/installdependencies.sh && \
+    dnf clean all
 
 COPY --chown=${USERNAME}:0 entrypoint.sh uid.sh register.sh get_github_app_token.sh ./
 
