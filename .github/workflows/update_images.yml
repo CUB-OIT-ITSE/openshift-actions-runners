@@ -350,7 +350,7 @@ jobs:
             type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
 
-      - name: Build and push Java image
+      - name: Build and push dotnet image
         if: |
           always() &&
           env.DOTNET_CHANGED == 'true' &&
