@@ -26,6 +26,9 @@ env:
   JAVA_IMG_NAME: java-runner-11
   JAVA_IMG_DIR: java
 
+  DOTNET_IMG_NAME: dotnet-runner-6.0
+  DOTNET_IMG_DIR: dotnet
+
 jobs:
   update_images:
     name: Update images
@@ -74,6 +77,7 @@ jobs:
               "k8s-tools": false,
               java: false,
               node: false,
+              dotnet: false,
             };
 
             Object.keys(dirsChanged).forEach((dir) => {
@@ -113,8 +117,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
       
       - name: Build and push base image
@@ -164,8 +169,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
 
       - name: Build and push buildah image
@@ -207,8 +213,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
 
       - name: Build and push K8s tools image
@@ -250,8 +257,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
 
       - name: Build and push Node image
@@ -293,8 +301,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
             type=ref,event=branch
 
       - name: Build and push Java image
@@ -322,6 +331,50 @@ jobs:
         uses: actions/delete-package-versions@v4
         with:
           package-name: ${{ env.JAVA_IMG_NAME }}
+          package-type: 'container'
+          min-versions-to-keep: 6
+          delete-only-untagged-versions: 'true'
+
+      - name: Collect Tagging data for docker dotnet image
+        if: |
+          always() &&
+          env.DOTNET_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        id: meta_dotnet
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_URL }}/${{ env.DOTNET_IMG_NAME }}
+          tags: |
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=ref,event=branch
+
+      - name: Build and push Java image
+        if: |
+          always() &&
+          env.DOTNET_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        id: build_dotnet
+        uses: docker/build-push-action@v5
+        with:
+          tags: "${{ steps.meta_dotnet.outputs.tags }}"
+          push: true
+          context:
+            ${{ env.DOTNET_IMG_DIR }}
+          file:
+            ${{ env.DOTNET_IMG_DIR }}/Containerfile
+          build-args: |
+            BASE_IMG=${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+
+      - name: Prune all untagged versions except for the last 6 for dotnet image
+        if: |
+          always() &&
+          env.DOTNET_CHANGED == 'true' &&
+          env.BUILD_CHILDREN == 'true'
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.DOTNET_IMG_NAME }}
           package-type: 'container'
           min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
