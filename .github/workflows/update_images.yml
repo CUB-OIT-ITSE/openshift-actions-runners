@@ -127,6 +127,7 @@ jobs:
         uses: docker/build-push-action@v5
         id: build_base_img
         with:
+          platforms: linux/amd64
           tags: |
             ${{ steps.meta_base.outputs.tags }}
           context:
@@ -182,6 +183,7 @@ jobs:
         id: build_buildah
         uses: docker/build-push-action@v5
         with:
+          platforms: linux/amd64
           tags: "${{ steps.meta_buildah.outputs.tags }}"
           push: true
           context:
@@ -227,6 +229,7 @@ jobs:
         id: build_k8s
         with:
           tags: "${{ steps.meta_k8s.outputs.tags }}"
+          platforms: linux/amd64
           push: true
           context:
             ${{ env.K8S_TOOLS_IMG_DIR }}
@@ -271,6 +274,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ steps.meta_node.outputs.tags }}"
+          platforms: linux/amd64
           push: true
           context:
             ${{ env.NODE_IMG_DIR }}
@@ -315,6 +319,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ steps.meta_java.outputs.tags }}"
+          platforms: linux/amd64
           push: true
           context:
             ${{ env.JAVA_IMG_DIR }}
@@ -359,6 +364,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: "${{ steps.meta_dotnet.outputs.tags }}"
+          platforms: linux/amd64
           push: true
           context:
             ${{ env.DOTNET_IMG_DIR }}
