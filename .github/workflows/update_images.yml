@@ -3,6 +3,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "base/*"
+      - "buildah/*"
+      - "dotnet/*"
+      - "java/*"
+      - "k8s-tools/*"
+      - "node/*"
+      - .github/workflows/update_images.yml
     tags:
       - v*
   workflow_dispatch:
