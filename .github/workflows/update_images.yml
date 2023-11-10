@@ -403,6 +403,15 @@ jobs:
       actions: read
       security-events: write
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Github Packages
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.LOGIN_REGISTRY_URL }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Security Scan Base Image
         id: scan_base
         uses: crazy-max/ghaction-container-scan@v3
