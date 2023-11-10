@@ -424,6 +424,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_base.outputs.sarif }}
+          category: base-image
 
       - name: Security Scan Buildah Image
         id: scan_buildah
@@ -437,6 +438,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_buildah.outputs.sarif }}
+          category: buildah-image
 
       - name: Security Scan K8S Image
         id: scan_k8s
@@ -450,6 +452,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_k8s.outputs.sarif }}
+          category: k8s-image
 
       - name: Security Scan Node Image
         id: scan_node
@@ -463,6 +466,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_node.outputs.sarif }}
+          category: node-image
 
       - name: Security Scan Java Image
         id: scan_java
@@ -476,6 +480,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_java.outputs.sarif }}
+          category: java-image
 
       - name: Security Scan dotnet Image
         id: scan_dotnet
@@ -489,3 +494,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.scan_dotnet.outputs.sarif }}
+          category: dotnet-image
