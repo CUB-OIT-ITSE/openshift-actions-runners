@@ -37,6 +37,8 @@ env:
   DOTNET_IMG_NAME: dotnet-runner-6.0
   DOTNET_IMG_DIR: dotnet
 
+  BASE_IMG_TAG: ${{ github.ref == 'refs/heads/main' && 'main' || 'latest' }}
+
 jobs:
   update_images:
     name: Update images
@@ -44,8 +46,6 @@ jobs:
     permissions:
       packages: write
       contents: read
-    env:
-      BASE_IMG_TAG: ${{ github.ref_name == 'main' && 'main' || 'latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -392,3 +392,91 @@ jobs:
           package-type: 'container'
           min-versions-to-keep: 6
           delete-only-untagged-versions: 'true'
+
+  scan_images:
+    name: Scan Images
+    needs: update_images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
+    steps:
+      - name: Security Scan Base Image
+        id: scan_base
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.BASE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.BASE_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for base image
+        if: ${{ steps.scan_base.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_base.outputs.sarif }}
+
+      - name: Security Scan Buildah Image
+        id: scan_buildah
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.BUILDAH_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.BUILDAH_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for buildah image
+        if: ${{ steps.scan_buildah.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_buildah.outputs.sarif }}
+
+      - name: Security Scan K8S Image
+        id: scan_k8s
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.K8S_TOOLS_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.K8S_TOOLS_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for k8s image
+        if: ${{ steps.scan_k8s.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_k8s.outputs.sarif }}
+
+      - name: Security Scan Node Image
+        id: scan_node
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.NODE_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.NODE_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for node image
+        if: ${{ steps.scan_node.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_node.outputs.sarif }}
+
+      - name: Security Scan Java Image
+        id: scan_java
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.JAVA_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.JAVA_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for java image
+        if: ${{ steps.scan_java.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_java.outputs.sarif }}
+
+      - name: Security Scan dotnet Image
+        id: scan_dotnet
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ env.REGISTRY_URL }}/${{ env.DOTNET_IMG_NAME }}:${{ env.BASE_IMG_TAG }}
+          dockerfile: ${{ env.DOTNET_IMG_DIR }}/Containerfile
+
+      - name: Upload SARIF report for dotnet image
+        if: ${{ steps.scan_dotnet.outputs.sarif != '' }}
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.scan_dotnet.outputs.sarif }}
