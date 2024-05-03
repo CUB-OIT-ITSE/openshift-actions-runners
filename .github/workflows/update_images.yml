@@ -146,7 +146,7 @@ jobs:
 
       - name: Prune all untagged versions except for the last 6 for base
         if: env.BASE_CHANGED == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.BASE_IMG_NAME }}
           package-type: 'container'
@@ -206,7 +206,7 @@ jobs:
           always() &&
           env.BUILDAH_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.BUILDAH_IMG_NAME }}
           package-type: 'container'
@@ -251,7 +251,7 @@ jobs:
           always() &&
           env.K8S-TOOLS_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.K8S_TOOLS_IMG_NAME }}
           package-type: 'container'
@@ -296,7 +296,7 @@ jobs:
           always() &&
           env.NODE_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.NODE_IMG_NAME }}
           package-type: 'container'
@@ -341,7 +341,7 @@ jobs:
           always() &&
           env.JAVA_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.JAVA_IMG_NAME }}
           package-type: 'container'
@@ -386,7 +386,7 @@ jobs:
           always() &&
           env.DOTNET_CHANGED == 'true' &&
           env.BUILD_CHILDREN == 'true'
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.DOTNET_IMG_NAME }}
           package-type: 'container'
